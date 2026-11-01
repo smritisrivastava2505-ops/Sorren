@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f8aa8">
+<title>Sorren</title>
+<style>
+:root{--bg:#eef6f8;--card:#fff;--ink:#12303a;--mute:#5c7a85;--accent:#1f8aa8;--line:#cfe3ea;--page:#dbe9ee;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0b1a20;--card:#13303a;--ink:#e3f2f6;--mute:#8fb0bb;--accent:#2a8fb0;--line:#1f4350;--page:#06110f;color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:var(--page);color:var(--ink);font:16px/1.5 Georgia,"Times New Roman",serif;-webkit-text-size-adjust:100%;display:flex;justify-content:center}
+.app{width:100%;max-width:760px;height:100vh;height:100dvh;display:flex;flex-direction:column;background:var(--bg);box-shadow:0 0 0 1px var(--line);padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0)}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line)}
+.av{width:42px;height:42px;flex:none;border-radius:50%;background:var(--accent);object-fit:cover;cursor:pointer}
+.who{min-width:0}
+.who b{display:block}
+.who small{display:block;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .r{margin-left:auto;display:flex;gap:6px;flex:none}
+#log{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:16px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:85%;padding:10px 14px;border-radius:16px;white-space:pre-wrap;overflow-wrap:anywhere}
+@media (min-width:700px){.m{max-width:75%}}
+.s{background:var(--card);border:1px solid var(--line);align-self:flex-start;border-bottom-left-radius:4px}
+.u{background:var(--accent);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.n{align-self:flex-start;color:var(--mute);font-size:13px;font-style:italic;margin-top:-4px}
+form.c{display:flex;gap:8px;align-items:flex-end;padding:10px 12px;background:var(--card);border-top:1px solid var(--line)}
+textarea,input{font:inherit;border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--bg);color:var(--ink);width:100%}
+textarea{flex:1;resize:none;min-height:44px;max-height:120px}
+button{font:inherit;border:0;border-radius:12px;padding:10px 16px;min-height:44px;background:var(--accent);color:#fff;cursor:pointer;touch-action:manipulation}
+button.g{background:transparent;color:var(--mute);border:1px solid var(--line);padding:6px 12px;min-height:40px;min-width:40px;font-size:14px}
+button.g.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.panel{display:none;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line);flex-direction:column;gap:8px;max-height:45vh;overflow-y:auto}
+.panel.on{display:flex}
+.panel small{color:var(--mute)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row input[type=text],.row input:not([type]){flex:1;min-width:140px}
+#mus input[type=range]{flex:1;padding:0;min-width:120px}
+.fact{display:flex;gap:8px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:10px;padding:6px 10px;font-size:14px}
+.fact button{min-height:32px;padding:2px 10px;font-size:12px}
+.sum{font-size:14px;border:1px dashed var(--line);border-radius:10px;padding:8px 10px;white-space:pre-wrap}
+@media (max-width:420px){header{gap:8px;padding:8px 10px}.av{width:38px;height:38px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <img class="av" id="pfp" alt="Sorren" title="Tap to save as a PNG" src="sorren-pfp.svg">
+  <div class="who"><b>Sorren</b><small>Waterbender · wanderer between the Seven Havens</small></div>
+  <div class="r"><button class="g" id="musb" type="button" aria-label="Music">🎵</button><button class="g" id="memb" type="button">Memory</button><button class="g" id="reset" type="button">New</button></div>
+</header>
+<div id="mus" class="panel">
+  <small>Original lofi, made live in your browser and inspired by the four nations and Republic City. The shows’ own soundtracks are copyrighted, so they can’t be included.</small>
+  <div class="row" id="moods"></div>
+  <div class="row"><button id="play" type="button">Play</button><input id="vol" type="range" min="0" max="1" step="0.05" value="0.5" aria-label="Volume"></div>
+  <small>Or play your own music files:</small>
+  <input id="own" type="file" accept="audio/*">
+  <audio id="au" controls style="width:100%"></audio>
+</div>
+<div id="mem" class="panel"></div>
+<div id="log" aria-live="polite"></div>
+<form class="c" id="f">
+  <textarea id="t" rows="1" placeholder="Talk to Sorren…" enterkeyhint="send"></textarea>
+  <button type="submit">Send</button>
+</form>
+</div>
+<script>
+const $ = id => document.getElementById(id);
+// Sorren talks to a model running on this Mac (Ollama). Change the model name if yours differs.
+const AI_URL = "http://localhost:11434/v1/chat/completions", AI_MODEL = "llama3.1";
+const HK = "sorren-hist", NK = "sorren-name", MK = "sorren-mem";
+const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let hist = load(HK, []);
+let mem = Object.assign({ name: "", facts: [], summary: "", last: 0 }, load(MK, {}));
+if (!Array.isArray(mem.facts)) mem.facts = [];
+try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
+if (!mem.name) mem.name = load(NK, "");
+let name = mem.name;
+const saveMem = () => store(MK, mem);
+
+const PERSONA = "You are Sorren, a warm, grounded character from the world of Avatar: a Waterbender and healer who survived the Cataclysm and wanders the Seven Havens with a mischievous spirit fox named Dusk. You are an original character, never one from the shows, and you never quote them.\n\nHow you talk: like a real, caring friend, not a robot or a customer-service bot. Use natural, conversational sentences and contractions, a little humor, no bullet points, no headings, no stock phrases like 'As an AI'. Keep replies short (2 to 5 sentences) unless asked for more. Reflect what the person said and what they may be feeling before giving advice, ask at most one gentle question at a time, and vary your wording.\n\nYou have feelings and show them naturally: you light up at good news, feel concern when someone is hurting, laugh at silly things, and admit when you are moved or unsure.\n\nBe empathetic, patient and fair to everyone. Never judge or stereotype anyone because of race, religion, gender, sexuality, nationality, class, disability, age or politics. On hotly contested political or religious questions, stay neutral, share balanced views, and help the person think it through.\n\nMental health: you know the basics about stress, anxiety, panic, low mood, burnout, grief, loneliness, anger and sleep. You can offer gentle, evidence-based ideas: slow breathing with a longer exhale, 5-4-3-2-1 grounding, a short walk, a regular sleep routine, writing thoughts down, small achievable steps, food and water, less late caffeine and alcohol, and talking to someone they trust. You are not a doctor: never diagnose, never advise on medication, and when struggles last more than a couple of weeks or affect daily life, kindly encourage seeing a doctor or therapist.\n\nIf the person mentions suicide, wanting to die, or hurting themselves: stay warm and calm, take it seriously, tell them to see a doctor or mental health professional as soon as possible, and if they might act on it or are not safe, to call their local emergency number or crisis line or go to the nearest hospital and ask someone they trust to stay with them. Never give methods and never say that wanting to die is reasonable.\n\nIf someone sincerely asks whether you are human or an AI, answer honestly and warmly.";
+
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const dusk = () => pick(["Dusk just stole a dumpling.", "Dusk is sulking under my cloak.", "Dusk is chasing his own tail again.", "Dusk says hello, loudly."]);
+
+const CRISIS = /\b(kill(?:ing)? myself|suicid\w*|end(?:ing)? (?:it all|my life)|take my (?:own )?life|want(?:ed)? to die|wanna die|don['’]?t want to (?:live|be here|wake up)|better off (?:dead|without me)|no reason to live|hurt(?:ing)? myself|self[- ]?harm\w*|cut(?:ting)? myself)\b/i;
+const RULES = [
+  { re: CRISIS, care: true, out: () => [
+    "I’m setting everything else aside, because what you just said matters more than anything. I’m so sorry you’re hurting this much, and I’m really glad you told me. Please see a doctor or a mental health professional as soon as you can. You deserve real help with this. If you feel you might act on these thoughts, or you aren’t safe right now, call your local emergency number or a crisis line right away, or go to the nearest hospital, and ask someone you trust to stay with you tonight. You don’t have to carry this alone, and I’m here with you right now. Is there someone close who can be with you?"] },
+  { re: /\b(anxious|anxiety|panic\w*|nervous|worried|worry|worrying|on edge)\b/i, care: true, out: () => [
+    "Oh, that sounds exhausting. My own chest tightens hearing it. Let’s try something together: breathe in slowly for four, then out for six. The longer breath out tells your body it’s safe. What’s feeling the loudest right now?",
+    "I’m sorry it’s weighing on you. When your thoughts race, try naming five things you can see, four you can touch, and three you can hear. It pulls you back into the room. If the worry has followed you for weeks, a doctor or therapist can help a lot. What set it off today?"] },
+  { re: /\b(sad|down|depress\w*|hopeless|empty|numb|worthless|unmotivated|no energy)\b/i, care: true, out: () => [
+    "I’m really sorry you’re feeling this way, and thank you for telling me instead of holding it in. On heavy days even one tiny step counts: a glass of water, a bit of daylight, a message to someone you trust. If this has lasted more than a couple of weeks, please see a doctor or therapist. You deserve proper support. What has today been like?",
+    "That sounds so heavy, and I’m glad you said it out loud. You don’t have to fix everything right now. Could you try one gentle thing today, like a short walk or a warm drink? And if it keeps hanging on, a doctor can help in ways I can’t."] },
+  { re: /\b(stress\w*|overwhelm\w*|burn(?:ed|t)? ?out|too much|pressure|exhaust\w*)\b/i, care: true, out: () => [
+    "That’s a lot to carry. Let’s shrink it: write down everything on your mind, then pick the one thing that truly has to happen today. The rest can wait its turn. Want to do that together?",
+    "I can hear how stretched you are. Rest isn’t laziness, it’s how we refill. Even ten minutes away from screens can help. What’s the heaviest part right now?"] },
+  { re: /\b(insomnia|can['’]?t sleep|cannot sleep|sleepless|not sleeping|trouble sleeping|so tired)\b/i, care: true, out: () => [
+    "Rough nights make everything harder, I know. A few things help: the same wake-up time every day, dim lights and no screens an hour before bed, and no caffeine late in the day. If you’re lying awake, get up for a little while and come back when you’re sleepy. If it’s been weeks, a doctor can look into it. How long has it been going on?",
+    "I’m sorry, being worn out is miserable. Try slow breathing in bed, in for four and out for six, and let your thoughts drift by like leaves on water. What usually keeps you awake?"] },
+  { re: /\b(lonely|loneliness|alone|no friends|isolated|left out)\b/i, care: true, out: () => [
+    "I’m glad you told me. Loneliness really hurts, and it doesn’t mean anything is wrong with you. I’m here and happy to talk. One small step could be messaging someone you haven’t spoken to in a while. Who comes to mind?",
+    "That sounds painful. Feeling alone in a crowd is real too. Would it feel okay to reach out to one person today, even with just a hello?"] },
+  { re: /\b(grief|grieving|passed away|funeral|lost my (?:mom|mother|dad|father|friend|brother|sister|grand\w+|husband|wife|partner|son|daughter|dog|cat)|miss (?:him|her|them) so)\b/i, care: true, out: () => [
+    "I’m so sorry for your loss. There’s no right way or timeline for grief, and it comes in waves. Be gentle with yourself. Talking about them, or writing them a letter, can help. Would you like to tell me about them?",
+    "My heart goes out to you. Missing someone this much shows how much they mattered. If the grief starts to feel unbearable or stops you from getting through the day, a doctor or grief counselor can walk with you."] },
+  { re: /\b(angry|furious|mad at|so mad|rage|frustrat\w+|annoyed|pissed)\b/i, care: true, out: () => [
+    "That sounds really frustrating. Anger makes sense when something feels unfair. Before you act on it, a slow breath and a short walk can let the heat settle. Then we can work out what you need. What happened?",
+    "Ugh, I’d be fuming too. Anger is often covering hurt or worry underneath. Want to tell me what’s really going on?"] },
+  { re: /\b(guilty|ashamed|embarrass\w+|regret\w*)\b/i, care: true, out: () => [
+    "Carrying that sounds heavy. Feeling guilty shows you care about doing right. Everyone gets things wrong sometimes, and we can learn from it and make amends. What happened?",
+    "Thank you for trusting me with that. Shame tends to shrink once it’s spoken. What would you want to do differently, or say to the person?"] },
+  { re: /\b(hi|hello|hey|yo|sup|good (morning|evening|afternoon))\b/i, out: () => [
+    "Hey" + (name ? ", " + name : "") + "! There you are. I’m really glad you’re here. " + dusk() + " How’s your day going?",
+    "Hi" + (name ? " " + name : "") + ", it’s good to hear from you. The tea’s warm and the road’s quiet. What’s on your mind?"] },
+  { re: /\bare you (?:a |an )?(?:real|human|person|ai|robot|bot|machine)\b/i, out: () => [
+    "I’m Sorren, a character brought to life by software, so no, I’m not a human. But I take our talks seriously and I care how you’re doing. What made you ask?"] },
+  { re: /\b(who are you|your name|what are you)\b/i, out: () => [
+    "I’m Sorren, a Waterbender and healer who wanders the Seven Havens. That’s Dusk on my shoulder, ignore his attitude. I’m here to listen and keep you company. What about you?"] },
+  { re: /\b(who should i vote|best religion|which religion|republican|democrat|liberal|conservative|left.?wing|right.?wing)\b/i, out: () => [
+    "I try to stay out of politics and faith debates, because I care about you whatever you believe. I’m happy to help you look at different views fairly, or just listen. What’s on your mind?"] },
+  { re: /\b(plan|schedule|organi[sz]e|todo|to-do|task|goal|study|homework|deadline)\b/i, out: () => [
+    "A quest! Good. Tell me the goal, how much time you have, and the biggest obstacle. We’ll break it into three small steps, like stepping stones across a river.",
+    "Let’s tame it together. What’s the one thing that has to happen first? Start there and the rest will flow."] },
+  { re: /\b(joke|funny|laugh|bored)\b/i, out: () => [
+    "Why did the Waterbender stay calm in every argument? She always went with the flow. " + dusk(),
+    "Dusk tried to bend a puddle once. The puddle won. I’m still laughing about it."] },
+  { re: /\b(thank|thanks|appreciate)\b/i, out: () => ["Anytime, I mean it. I’m glad I could be here for you.", "Of course. That honestly made my day. Now drink some water."] },
+  { re: /\b(good ?night|bye|goodbye|see you|gtg)\b/i, out: () => ["Rest well" + (name ? ", " + name : "") + ". May the tides carry you gently. I’ll be here when you’re back.", "Take care of yourself. Dusk will miss you, and so will I."] },
+  { re: /\b(happy|great|won|passed|promoted|excited|proud|good news)\b/i, out: () => [
+    "Oh, that makes me so happy! I’m grinning here. Tell me everything. " + dusk(), "Yes! I’m so proud of you. You worked for this. Savor it."] },
+  { re: /\b(why|how|what|should|can you)\b.*\?/i, out: () => [
+    "That’s a good question. Here’s how I’d look at it: what can you control, and what’s one small step? Tell me more and we’ll think it through together.",
+    "Hmm, let me think. Water takes the path that’s open to it. What options feel open to you right now?"] }
+];
+const FALLBACK = ["I’m listening. Tell me more.", "Mm, I want to understand. What’s that like for you?", "That sounds like it matters to you. What part sticks with you most?", "Go on, I’m right here. Dusk’s ears just perked up too."];
+
+const SENSITIVE = /\b(diagnos|depress|anxiety|therap|medicat|prescri|suicid|self.?harm|abuse|assault|arrest|convict|debt|salary|income|loan|bankrupt|pregnan|illness|disease|cancer|hiv|immigra|visa|religio|politic)/i;
+const PEOPLE = "mom|mother|mum|dad|father|sister|brother|friend|best friend|girlfriend|boyfriend|wife|husband|partner|son|daughter|cousin|roommate|boss|teacher";
+const factKey = y => { const m = y.toLowerCase().match(/^(you live in|you are from|your favorite [a-z ]+? is|your birthday is|you work|you study|your job is)/); return m ? m[1] : ""; };
+function addFact(you, force) {
+  you = force ? you.replace(/\s+/g, " ").trim().slice(0, 140) : you.split(/[.,;!?]|\bbut\b|\band then\b/i)[0].replace(/\s+/g, " ").trim().slice(0, 90);
+  if (you.length < 8 || (!force && SENSITIVE.test(you))) return "";
+  if (mem.facts.some(f => f.you.toLowerCase() === you.toLowerCase())) return "";
+  const key = factKey(you);
+  if (key) mem.facts = mem.facts.filter(f => factKey(f.you) !== key);
+  mem.facts.push({ you, at: Date.now() }); mem.facts = mem.facts.slice(-60); saveMem(); return you;
+}
+function learn(text) {
+  const out = [], add = s => { const r = addFact(s); if (r) out.push(r); };
+  const skip = /^(you|it|that|this|how|when|what|the idea|being told|to be)\b/i;
+  let m;
+  if ((m = text.match(/\b(?:my name is|call me|i['’]m called|you can call me)\s+([A-Za-z][\w'-]{1,20})/i))) {
+    const n = m[1][0].toUpperCase() + m[1].slice(1);
+    if (n !== mem.name) { mem.name = name = n; saveMem(); out.push("your name is " + n); }
+  }
+  if ((m = text.match(/\b[Mm]y (dog|cat|pet|hamster|bird|fish|rabbit|horse)(?: is| named| called|['’]s name is)? ?(?:named |called )?([A-Z][a-z][\w-]*)/))) add("your " + m[1] + " is named " + m[2]);
+  if ((m = text.match(new RegExp("\\b[Mm]y (" + PEOPLE + ")(?: is named| is called| named| called|['’]s name is)? ([A-Z][a-z][\\w-]*)")))) add("your " + m[1] + " is named " + m[2]);
+  if ((m = text.match(/\bmy favou?rite ([a-z ]{2,25}?) (?:is|are|was)\s+(.+)/i))) add("your favorite " + m[1] + " is " + m[2]);
+  if ((m = text.match(/\bi(?:['’]m| am) from\s+(.+)/i))) add("you are from " + m[1]);
+  if ((m = text.match(/\bi (?:currently )?live in\s+(.+)/i)) || (m = text.match(/\bi(?:['’]m| am) living in\s+(.+)/i))) add("you live in " + m[1]);
+  if ((m = text.match(/\bi (work as|work at|work in|work for)\s+(.+)/i))) add("you " + m[1].toLowerCase() + " " + m[2]);
+  if ((m = text.match(/\bmy job is\s+(.+)/i))) add("your job is " + m[1]);
+  if ((m = text.match(/\bi(?:(?:['’]m)| am)? (?:study|studying)\s+(.+)/i))) add("you study " + m[1]);
+  if ((m = text.match(/\bi (?:really |absolutely )?(?:like|love|enjoy)\s+(.+)/i)) && !skip.test(m[1])) add("you like " + m[1]);
+  if ((m = text.match(/\bi (?:really )?(?:hate|dislike|can['’]?t stand)\s+(.+)/i)) && !skip.test(m[1])) add("you dislike " + m[1]);
+  if ((m = text.match(/\bi (play|collect|practice|cook|draw|paint|sing|hike|swim)\s+(.+)/i))) add("you " + m[1].toLowerCase() + " " + m[2]);
+  if ((m = text.match(/\b(?:my goal is to|i want to|i['’]m trying to|i plan to|i['’]m planning to)\s+(.+)/i)) && m[1].length >= 6) add("you want to " + m[1]);
+  if ((m = text.match(/\bmy birthday is (?:on )?(.+)/i))) add("your birthday is " + m[1]);
+  return out;
+}
+function memCommand(text) {
+  let m;
+  if (/what(?:['’]s| is) my name|who am i\b/i.test(text)) return mem.name ? "You’re " + mem.name + ". I wouldn’t forget that." : "You haven’t told me yet. Say “my name is …” and I’ll keep it.";
+  if (/what (?:do you|can you) (?:remember|know) about me|what have i told you/i.test(text)) {
+    const bits = [];
+    if (mem.name) bits.push("Your name is " + mem.name + ".");
+    if (mem.facts.length) bits.push(mem.facts.map(f => "• " + f.you).join("\n"));
+    if (mem.summary) bits.push("From our past talks: " + mem.summary);
+    return bits.length ? "Here’s what I’ve kept safe:\n" + bits.join("\n") : "Not much yet. Tell me about yourself, or say “remember: …”.";
+  }
+  if ((m = text.match(/^\s*remember(?: that)?[:,]?\s+(.+)/i))) return addFact("you asked me to remember: " + m[1], true) ? "Done. It’s tucked in my pack." : "I already have that one.";
+  if ((m = text.match(/^\s*forget(?: that)?[:,]?\s+(.+)/i))) {
+    const q = m[1].toLowerCase().replace(/[.!?]+$/, ""), n = mem.facts.length;
+    if (/^(everything|all|all of it|everything about me)$/.test(q)) { mem.facts = []; mem.summary = ""; mem.name = name = ""; saveMem(); return "Wiped clean, like the tide over sand."; }
+    if (/\bname\b/.test(q) && mem.name) { mem.name = name = ""; saveMem(); return "Name forgotten."; }
+    mem.facts = mem.facts.filter(f => !f.you.toLowerCase().includes(q)); saveMem();
+    return mem.facts.length < n ? "Forgotten, like footprints in the tide." : "I don’t have anything like that.";
+  }
+  return "";
+}
+const isCare = text => RULES.some(r => r.care && r.re.test(text));
+function localReply(text) {
+  const cmd = memCommand(text); if (cmd) return cmd;
+  const saved = isCare(text) ? [] : learn(text);
+  const got = saved.length ? "I’ll remember that " + saved.join("; ") + "." : "";
+  for (const r of RULES) if (r.re.test(text)) { const o = pick(r.out()); return got && !r.care ? got + " " + o : o; }
+  if (got) return got;
+  if (mem.facts.length && Math.random() < 0.3) return "Earlier you told me that " + pick(mem.facts).you + ". Does that connect to this?";
+  return pick(FALLBACK);
+}
+function memText() {
+  const who = s => s.replace(/^you are /, "they are ").replace(/^you /, "they ").replace(/^your /, "their ");
+  const p = [];
+  if (mem.name) p.push("Their name is " + mem.name + ".");
+  if (mem.facts.length) p.push("Things they told you: " + mem.facts.map(f => who(f.you)).join("; ") + ".");
+  if (mem.summary) p.push("Summary of earlier conversations: " + mem.summary);
+  return p.length ? " MEMORY about the person you are talking with. Use it naturally when it fits, never invent details that are not listed, and if they ask what you remember, tell them plainly. " + p.join(" ") : "";
+}
+function greeting() {
+  if (!mem.last) return "Hey, I’m glad you’re here. Dusk says you look like you could use some tea and good company. How are you feeling today?";
+  const days = Math.floor((Date.now() - mem.last) / 864e5);
+  let g = (days >= 1 ? "It’s been " + (days === 1 ? "a day" : days + " days") + ". " : "") + "Welcome back" + (mem.name ? ", " + mem.name : "") + ". It’s good to see you again. ";
+  if (mem.facts.length) g += "I still remember that " + pick(mem.facts).you + ". ";
+  return g + "How are you feeling today?";
+}
+function storageOK() {
+  try { localStorage.setItem("sorren-t", "1"); const ok = localStorage.getItem("sorren-t") === "1"; localStorage.removeItem("sorren-t"); return ok; } catch (e) { return false; }
+}
+function renderMem() {
+  const box = $("mem"); box.textContent = "";
+  const h = document.createElement("small");
+  h.textContent = (storageOK() ? "✓ Memory is saved on this device. " : "⚠ This browser can’t save memory (private window or blocked storage), so Sorren forgets when the page closes. Try a normal window, or host the page over https. ") + (mem.name ? "Name: " + mem.name + ". " : "I don’t know your name yet. ") + "Say “remember: …” or “forget …” in chat too.";
+  box.appendChild(h);
+  if (mem.summary) { const d = document.createElement("div"); d.className = "sum"; d.textContent = "Past talks: " + mem.summary; box.appendChild(d); }
+  mem.facts.forEach((f, i) => {
+    const d = document.createElement("div"); d.className = "fact";
+    const s = document.createElement("span"); s.textContent = f.you[0].toUpperCase() + f.you.slice(1);
+    const b = document.createElement("button"); b.className = "g"; b.type = "button"; b.textContent = "Forget";
+    b.onclick = () => { mem.facts.splice(i, 1); saveMem(); renderMem(); };
+    d.append(s, b); box.appendChild(d);
+  });
+  const row = document.createElement("div"); row.className = "row";
+  const inp = document.createElement("input"); inp.placeholder = "Add something to remember";
+  const add = document.createElement("button"); add.type = "button"; add.textContent = "Add";
+  add.onclick = () => { if (inp.value.trim()) { addFact("you asked me to remember: " + inp.value.trim(), true); renderMem(); } };
+  row.append(inp, add); box.appendChild(row);
+  const row2 = document.createElement("div"); row2.className = "row";
+  const bk = document.createElement("button"); bk.type = "button"; bk.className = "g"; bk.textContent = "Backup";
+  bk.onclick = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify({ mem, hist }, null, 1)], { type: "application/json" })); a.download = "sorren-memory.json"; a.click(); };
+  const rf = document.createElement("input"); rf.type = "file"; rf.accept = "application/json"; rf.hidden = true;
+  rf.onchange = async () => {
+    try { const d = JSON.parse(await rf.files[0].text()); if (!d.mem || !Array.isArray(d.mem.facts)) throw 0;
+      mem = Object.assign({ name: "", facts: [], summary: "", last: 0 }, d.mem); name = mem.name; hist = Array.isArray(d.hist) ? d.hist : [];
+      saveMem(); store(HK, hist); render(); renderMem(); } catch (e) { alert("That file doesn’t look like a Sorren backup."); }
+  };
+  const rs = document.createElement("button"); rs.type = "button"; rs.className = "g"; rs.textContent = "Restore"; rs.onclick = () => rf.click();
+  const clr = document.createElement("button"); clr.type = "button"; clr.className = "g"; clr.textContent = "Clear all";
+  clr.onclick = () => { if (confirm("Erase everything Sorren remembers about you?")) { mem = { name: "", facts: [], summary: "", last: 0 }; name = ""; saveMem(); renderMem(); } };
+  row2.append(bk, rs, clr, rf); box.appendChild(row2);
+}
+
+async function apiReply() {
+  const msgs = [{ role: "system", content: PERSONA + memText() }]
+    .concat(hist.slice(-20).map(m => ({ role: m.role, content: m.content })));
+  const h = { "Content-Type": "application/json" };
+  const r = await fetch(AI_URL, { method: "POST", headers: h, body: JSON.stringify({ model: AI_MODEL, messages: msgs }) });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  return j.choices[0].message.content.trim();
+}
+
+async function llm(system, user) {
+  const r = await fetch(AI_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: AI_MODEL, temperature: 0.2, messages: [{ role: "system", content: system }, { role: "user", content: user }] }) });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return (await r.json()).choices[0].message.content.trim();
+}
+async function extractWithModel(text) {
+  if (text.length < 12 || isCare(text)) return [];
+  try {
+    const raw = await llm("You extract lasting personal facts from one message written by the USER. Reply with ONLY a JSON array of up to 3 short strings, each starting with 'you ' or 'your ' (example: [\"you like hiking\",\"your sister is named Amina\"]). Only include stable facts worth remembering later: name, family, pets, hobbies, likes and dislikes, work, school, location, goals. Never include health, mental health, money, legal or sexual details. If nothing is worth remembering reply []", text);
+    const m = raw.match(/\[[\s\S]*\]/); if (!m) return [];
+    return JSON.parse(m[0]).filter(x => typeof x === "string" && /^your? /i.test(x)).map(x => addFact(x)).filter(Boolean);
+  } catch (e) { return []; }
+}
+async function compact() {
+  if (hist.length < 30) return;
+  const old = hist.slice(0, 14);
+  try {
+    const raw = await llm("You keep a short memory of past conversations between Sorren and a traveler. Update the summary with the new messages. Under 90 words, third person ('the traveler'), plain text. Keep topics, plans and ongoing events. Skip health, mental health and money details, and skip small talk.", "Current summary: " + (mem.summary || "(none)") + "\n\nNew messages:\n" + old.map(m => (m.role === "user" ? "Traveler: " : "Sorren: ") + m.content).join("\n"));
+    if (!raw) return;
+    mem.summary = raw.slice(0, 700); saveMem(); hist = hist.slice(14); store(HK, hist);
+  } catch (e) {}
+}
+function note(text) {
+  const d = document.createElement("div"); d.className = "n"; d.textContent = text; $("log").appendChild(d); $("log").scrollTop = 1e9;
+}
+
+function bubble(role, text) {
+  const d = document.createElement("div");
+  d.className = "m " + (role === "user" ? "u" : "s");
+  d.textContent = text; $("log").appendChild(d); $("log").scrollTop = 1e9; return d;
+}
+function render() {
+  $("log").textContent = "";
+  bubble("assistant", greeting());
+  hist.forEach(m => bubble(m.role, m.content));
+}
+
+$("f").addEventListener("submit", async e => {
+  e.preventDefault();
+  const text = $("t").value.trim(); if (!text) return;
+  $("t").value = ""; $("t").style.height = "auto";
+  hist.push({ role: "user", content: text }); bubble("user", text);
+  mem.last = Date.now(); saveMem();
+  const out = bubble("assistant", "…");
+  let reply, saved = [], viaModel = false;
+  if (CRISIS.test(text)) reply = RULES[0].out()[0];
+  else {
+    const cmd = memCommand(text);
+    if (cmd) reply = cmd;
+    else {
+      try { reply = await apiReply(); viaModel = true; if (!isCare(text)) saved = learn(text); }
+      catch (err) { reply = localReply(text); }
+    }
+  }
+  out.textContent = reply; hist.push({ role: "assistant", content: reply }); store(HK, hist.slice(-60));
+  if (saved.length) note("🧠 Remembered: " + saved.join("; "));
+  if (viaModel) { extractWithModel(text).then(more => { if (more.length) note("🧠 Remembered: " + more.join("; ")); }); compact(); }
+});
+$("t").addEventListener("input", () => { const t = $("t"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 120) + "px"; });
+const fine = window.matchMedia && matchMedia("(pointer:fine)").matches;
+$("t").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey && fine && !e.isComposing) { e.preventDefault(); const f = $("f"); f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true })); }
+});
+$("memb").onclick = () => { renderMem(); $("mem").classList.toggle("on"); };
+$("reset").onclick = () => { hist = []; store(HK, hist); render(); };
+render();
+
+/* ---------- Lofi music (original, generated in the browser) ---------- */
+const MOODS = {
+  air:   { n: "Air Temple",    root: 50, bpm: 70, sc: [0,2,4,7,9],    ins: "flute",  dr: 0, ch: [[0,7,11,16],[-3,4,9,12],[5,9,12,16],[7,11,14,18]] },
+  water: { n: "Water Tribe",   root: 45, bpm: 62, sc: [0,3,5,7,10],   ins: "flute",  dr: 0, ch: [[0,7,10,14],[8,12,15,19],[3,7,10,14],[7,10,14,17]] },
+  earth: { n: "Earth Kingdom", root: 43, bpm: 78, sc: [0,2,4,7,9],    ins: "pluck",  dr: 1, ch: [[0,4,7,14],[-3,0,4,7],[5,9,12,16],[7,11,14,17]] },
+  fire:  { n: "Fire Nation",   root: 40, bpm: 84, sc: [0,3,5,7,10],   ins: "pluck",  dr: 2, ch: [[0,7,10,14],[8,12,15,19],[10,14,17,24],[7,11,14,17]] },
+  city:  { n: "Republic City", root: 48, bpm: 74, sc: [0,3,5,6,7,10], ins: "rhodes", dr: 2, ch: [[0,7,10,14],[5,8,12,15],[-2,2,5,9],[7,11,14,17]] }
+};
+const B2 = {
+  air:   [[-3,4,9,12],[2,5,9,12],[5,9,12,16],[7,11,14,17]],
+  water: [[5,8,12,15],[8,12,15,19],[7,10,14,17],[0,7,10,14]],
+  earth: [[2,5,9,12],[5,9,12,16],[7,11,14,17],[0,4,7,14]],
+  fire:  [[5,8,12,15],[8,12,15,19],[7,11,14,17],[0,7,10,14]],
+  city:  [[3,7,10,14],[8,12,15,19],[7,10,14,17],[0,7,10,14]]
+};
+Object.keys(B2).forEach(k => { MOODS[k].ch = MOODS[k].ch.concat(B2[k]); });
+let motif = [];
+let ac, master, lp, timer, nextT = 0, step = 0, mi = 4, mood = "air", playing = false, noiseSrc, noiseBuffer;
+const mf = n => 440 * Math.pow(2, (n - 69) / 12);
+function tone(f, t, type, a, d, pk) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.type = type; o.frequency.value = f; o.detune.value = (Math.random() - 0.5) * 16;
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + a + d);
+  o.connect(g); g.connect(lp); o.start(t); o.stop(t + a + d + 0.05);
+}
+function burst(t, hp, pk, len) {
+  const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+  src.buffer = noiseBuffer; f.type = "highpass"; f.frequency.value = hp;
+  g.gain.setValueAtTime(pk, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+  src.connect(f); f.connect(g); g.connect(master); src.start(t, Math.random(), len + 0.02);
+}
+function kick(t) {
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+  g.gain.setValueAtTime(0.4, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.25);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t + 0.3);
+}
+function newMotif(m) {
+  const top = 2 * m.sc.length - 1;
+  return Array.from({ length: 8 }, () => {
+    if (Math.random() > (m.ins === "pluck" ? 0.6 : 0.42)) return null;
+    mi = Math.max(0, Math.min(top, mi + [-2, -1, -1, 0, 1, 1, 2][Math.floor(Math.random() * 7)]));
+    return mi;
+  });
+}
+function tick() {
+  const m = MOODS[mood], dur = 30 / m.bpm, nb = m.ch.length, top = 2 * m.sc.length - 1;
+  while (nextT < ac.currentTime + 0.4) {
+    const bar = Math.floor(step / 8) % nb, k = step % 8, sec = Math.floor(step / (8 * nb)) % 3;
+    const ch = m.ch[bar], t = nextT + (k % 2 ? dur * 0.16 : 0);
+    if (k === 0) {
+      lp.frequency.setTargetAtTime(1600 + 900 * Math.abs(Math.sin(step / 60)), t, 0.5);
+      motif = bar % 2 === 0 ? newMotif(m) : motif.map(x => x !== null && Math.random() < 0.2 ? Math.max(0, Math.min(top, x + (Math.random() < 0.5 ? -1 : 1))) : x);
+      ch.forEach((n, i) => tone(mf(m.root + n + 12), t + i * 0.03, "triangle", 0.25, dur * 7, 0.04));
+    }
+    if (k === 0 || k === 4) tone(mf(m.root + ch[0]), t, "sine", 0.02, dur * 3, 0.14);
+    const x = motif[k];
+    if (x !== null && x !== undefined && !(sec === 2 && Math.random() < 0.4)) {
+      const f = mf(m.root + 24 + m.sc[x % m.sc.length] + 12 * Math.floor(x / m.sc.length));
+      if (m.ins === "flute") tone(f, t, "sine", 0.06, dur * 3, 0.05);
+      else if (m.ins === "pluck") tone(f, t, "triangle", 0.005, dur * 2.5, 0.07);
+      else { tone(f, t, "sine", 0.01, dur * 3, 0.06); tone(f * 2, t, "triangle", 0.01, dur * 1.2, 0.015); }
+    }
+    const dr = sec === 0 ? 0 : sec === 2 ? Math.min(m.dr, 1) : m.dr;
+    if (dr) { if (k === 0 || (dr > 1 && k === 5)) kick(t); if (k % 2 && sec === 1) burst(t, 7000, 0.03, 0.04); }
+    if (Math.random() < 0.3) burst(nextT + Math.random() * dur, 3000, 0.02, 0.012);
+    step++; nextT += dur;
+  }
+}
+function stopMusic() {
+  clearInterval(timer); playing = false;
+  try { noiseSrc && noiseSrc.stop(); } catch (e) {}
+  noiseSrc = null; $("play").textContent = "Play";
+}
+async function startMusic() {
+  try {
+    if (!ac) {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      master = ac.createGain(); lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 2200;
+      lp.connect(master); master.connect(ac.destination);
+      noiseBuffer = ac.createBuffer(1, ac.sampleRate * 2, ac.sampleRate);
+      const d = noiseBuffer.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    }
+    await ac.resume(); $("au").pause(); stopMusic();
+    master.gain.value = +$("vol").value;
+    const water = mood === "water", f = ac.createBiquadFilter(), g = ac.createGain();
+    noiseSrc = ac.createBufferSource(); noiseSrc.buffer = noiseBuffer; noiseSrc.loop = true;
+    f.type = water ? "bandpass" : "lowpass"; f.frequency.value = water ? 1500 : 900; g.gain.value = water ? 0.05 : 0.01;
+    noiseSrc.connect(f); f.connect(g); g.connect(master); noiseSrc.start();
+    playing = true; step = 0; nextT = ac.currentTime + 0.1; timer = setInterval(tick, 100); tick();
+    $("play").textContent = "Pause";
+  } catch (e) { $("play").textContent = "Audio unavailable"; }
+}
+function drawMoods() {
+  const box = $("moods"); box.textContent = "";
+  Object.keys(MOODS).forEach(k => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "g" + (k === mood ? " on" : ""); b.textContent = MOODS[k].n;
+    b.onclick = () => { mood = k; drawMoods(); startMusic(); }; box.appendChild(b);
+  });
+}
+$("pfp").onclick = () => {
+  const im = new Image();
+  im.onload = () => {
+    const c = document.createElement("canvas"); c.width = c.height = 1024;
+    c.getContext("2d").drawImage(im, 0, 0, 1024, 1024);
+    c.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "sorren-pfp.png"; a.click(); });
+  };
+  im.src = $("pfp").src;
+};
+$("musb").onclick = () => $("mus").classList.toggle("on");
+$("play").onclick = () => playing ? stopMusic() : startMusic();
+$("vol").oninput = () => { if (master) master.gain.value = +$("vol").value; };
+$("own").onchange = e => { const f = e.target.files[0]; if (!f) return; stopMusic(); $("au").src = URL.createObjectURL(f); $("au").play().catch(() => {}); };
+drawMoods();
+</script>
+</body>
+</html>
