@@ -1,2 +1,51 @@
-# Sorren
-an ai Companion.
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0b2f4a"/><stop offset="1" stop-color="#1f8aa8"/></linearGradient>
+<radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#bff3ff" stop-opacity="0.9"/><stop offset="1" stop-color="#bff3ff" stop-opacity="0"/></radialGradient>
+<clipPath id="c"><circle cx="256" cy="256" r="256"/></clipPath>
+</defs>
+<g clip-path="url(#c)">
+<rect width="512" height="512" fill="url(#bg)"/>
+<circle cx="150" cy="130" r="110" fill="url(#glow)" opacity="0.55"/>
+<circle cx="150" cy="130" r="38" fill="#eafaff" opacity="0.9"/>
+<circle cx="164" cy="122" r="34" fill="#12405f" opacity="0.55"/>
+<g fill="none" stroke="#8be0f5" stroke-linecap="round" opacity="0.75">
+<path d="M40 420 C120 360 170 450 250 410 S400 360 480 420" stroke-width="10"/>
+<path d="M30 460 C120 410 190 490 270 450 S410 410 490 465" stroke-width="7" opacity="0.7"/>
+<path d="M400 60 C450 90 440 150 400 160 C370 168 360 140 380 130" stroke-width="8"/>
+</g>
+<path d="M165 215 C150 300 158 365 190 400 L210 388 C188 345 188 290 196 245Z" fill="#1d1a2b"/>
+<path d="M347 215 C362 300 354 365 322 400 L302 388 C324 345 324 290 316 245Z" fill="#1d1a2b"/>
+<ellipse cx="256" cy="212" rx="94" ry="100" fill="#1d1a2b"/>
+<path d="M64 520 C74 410 170 352 256 352 C342 352 438 410 448 520Z" fill="#1b5fa3"/>
+<path d="M64 520 C74 410 170 352 256 352 C342 352 438 410 448 520" fill="none" stroke="#4fc3e0" stroke-width="6"/>
+<path d="M232 300 H280 V362 Q256 380 232 362Z" fill="#cf9a6a"/>
+<path d="M176 352 Q256 410 336 352 L336 378 Q256 438 176 378Z" fill="#e8f6fb"/>
+<circle cx="256" cy="402" r="9" fill="#4fc3e0"/>
+<ellipse cx="256" cy="238" rx="70" ry="82" fill="#e0ad7e"/>
+<circle cx="214" cy="272" r="13" fill="#e58f7a" opacity="0.35"/>
+<circle cx="298" cy="272" r="13" fill="#e58f7a" opacity="0.35"/>
+<ellipse cx="226" cy="244" rx="9" ry="12" fill="#1d1a2b"/>
+<ellipse cx="286" cy="244" rx="9" ry="12" fill="#1d1a2b"/>
+<circle cx="229" cy="240" r="3.5" fill="#fff"/>
+<circle cx="289" cy="240" r="3.5" fill="#fff"/>
+<path d="M208 222 Q226 212 244 222 M268 222 Q286 212 304 222" fill="none" stroke="#1d1a2b" stroke-width="5" stroke-linecap="round"/>
+<path d="M238 286 Q256 300 274 286" fill="none" stroke="#8a4b32" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M174 232 C176 150 336 150 338 232 C312 190 278 176 256 178 C232 176 200 192 174 232Z" fill="#1d1a2b"/>
+<path d="M178 204 Q256 172 334 204 L331 220 Q256 192 181 220Z" fill="#4fc3e0"/>
+<circle cx="256" cy="193" r="9" fill="#fff"/>
+<circle cx="256" cy="193" r="4" fill="#1f8aa8"/>
+<g transform="translate(372 332)">
+<circle r="62" fill="url(#glow)" opacity="0.7"/>
+<ellipse cx="6" cy="44" rx="40" ry="20" fill="#fbe9d2"/>
+<path d="M44 40 C84 20 90 60 56 66 C70 54 66 44 44 50Z" fill="#f08a3c"/>
+<path d="M-32 -8 L-36 -56 L-8 -30Z M32 -8 L36 -56 L8 -30Z" fill="#f08a3c"/>
+<ellipse cx="0" cy="0" rx="38" ry="31" fill="#fbe9d2"/>
+<ellipse cx="0" cy="12" rx="20" ry="14" fill="#fff"/>
+<circle cx="0" cy="5" r="4.5" fill="#1d1a2b"/>
+<ellipse cx="-14" cy="-5" rx="3.5" ry="5" fill="#1d1a2b"/>
+<ellipse cx="14" cy="-5" rx="3.5" ry="5" fill="#1d1a2b"/>
+<path d="M-9 -20 Q0 -31 9 -20 Q0 -25 -9 -20Z" fill="#1f8aa8" stroke="#1f8aa8" stroke-width="2" stroke-linejoin="round"/>
+</g>
+</g>
+</svg>
